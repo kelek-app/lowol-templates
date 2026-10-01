@@ -1,0 +1,7 @@
+# /srv/proxy/Caddyfile
+# Settings shared by every site. Each app's domain lives in sites/<app>.caddy.
+{
+	email __ACME_EMAIL__
+}
+
+import sites/*.caddy

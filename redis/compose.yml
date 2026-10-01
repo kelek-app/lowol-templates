@@ -1,0 +1,42 @@
+# /srv/__DB__/compose.yml
+#
+# Redis for __APP__: sessions, cache and queues. Apps reach it as host
+# "__DB__", port 6379, with REDIS_PASSWORD from .env.
+#
+# "noeviction" means Redis refuses new writes when full instead of silently
+# dropping keys, so queued jobs are never lost. Raise REDIS_MAXMEMORY if needed.
+
+name: __DB__
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    env_file: .env
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --appendonly yes
+        --maxmemory "$${REDIS_MAXMEMORY:-256mb}"
+        --maxmemory-policy noeviction
+    volumes:
+      - data:/data
+    networks:
+      shared:
+        aliases: [__DB__]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  data:
+
+networks:
+  # Apps that use this Redis join this network.
+  shared:
+    name: __DB__

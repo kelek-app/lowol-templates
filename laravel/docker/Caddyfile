@@ -1,0 +1,17 @@
+# FrankenPHP inside the app container. Plain HTTP on $PORT: TLS is handled by
+# the proxy in front of it (proxy/ in this repo).
+{
+	frankenphp
+	admin off
+	auto_https off
+	servers {
+		# The proxy sits on a private Docker network; trust its X-Forwarded-* headers.
+		trusted_proxies static private_ranges
+	}
+}
+
+:{$PORT:8080} {
+	root * /app/public
+	encode zstd gzip
+	php_server
+}

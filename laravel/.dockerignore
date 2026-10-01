@@ -1,0 +1,28 @@
+.git
+.github
+.idea
+.vscode
+
+# Secrets never go into the image; they arrive as environment variables.
+.env
+.env.*
+
+# Rebuilt inside the image.
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+bootstrap/cache/*.php
+
+# Runtime state.
+storage/*.key
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+tests
+.phpunit.result.cache
+compose*.yml
+docker-compose*.yml

@@ -1,0 +1,60 @@
+# /srv/__APP__/compose.yml
+#
+# Runs __APP__ as three containers from one image:
+#   web        serves HTTP on port 8080, reached through the proxy (/srv/proxy)
+#   worker     processes queued jobs
+#   scheduler  runs Laravel's scheduled tasks
+#
+# Settings and secrets live in .env next to this file. See README.md for how
+# to restart, change settings or deploy a new version by hand.
+
+name: __APP__
+
+x-app: &app
+  image: __APP__:${APP_TAG:?Set APP_TAG in .env to the image tag to run}
+  env_file: .env
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  web:
+    <<: *app
+    environment:
+      PORT: "8080"
+    networks:
+      default: {}
+      proxy:
+        aliases: [__APP__-web]
+      __APP__-mysql: {}
+      __APP__-redis: {}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  worker:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+    stop_grace_period: 60s
+    networks: [default, __APP__-mysql, __APP__-redis]
+
+  scheduler:
+    <<: *app
+    command: ["php", "artisan", "schedule:work"]
+    networks: [default, __APP__-mysql, __APP__-redis]
+
+networks:
+  proxy:
+    external: true
+  # The app's databases (/srv/__APP__-mysql and /srv/__APP__-redis).
+  # Using your own database instead? Remove these two and their mentions above.
+  __APP__-mysql:
+    external: true
+  __APP__-redis:
+    external: true

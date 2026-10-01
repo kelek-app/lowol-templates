@@ -1,0 +1,35 @@
+# /srv/proxy/compose.yml
+#
+# Caddy in front of every app on this server. It listens on ports 80 and 443,
+# gets and renews Let's Encrypt certificates on its own, and forwards each
+# domain to its app. One file per app in sites/.
+#
+# After adding or editing a file in sites/:
+#   docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+name: proxy
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # This whole folder is mounted read-only, so edits to Caddyfile and sites/
+      # are picked up by the reload command above.
+      - .:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [proxy]
+
+networks:
+  # Apps join this network so Caddy can reach them by name.
+  proxy:
+    name: proxy
+
+volumes:
+  caddy_data:
+  caddy_config:

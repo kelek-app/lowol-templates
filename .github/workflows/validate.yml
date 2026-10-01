@@ -1,0 +1,47 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Caddy
+        run: |
+          curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=amd64" -o /usr/local/bin/caddy
+          chmod +x /usr/local/bin/caddy
+          caddy version
+
+      - name: Validate templates
+        run: tests/validate.sh
+
+  laravel-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create a fresh Laravel app
+        run: |
+          composer create-project laravel/laravel /tmp/app --no-interaction --prefer-dist
+          cp -R laravel/Dockerfile laravel/.dockerignore laravel/docker /tmp/app/
+
+      - name: Build the image
+        run: docker build -t demo:ci /tmp/app
+
+      - name: Image answers on $PORT
+        run: |
+          key="$(docker run --rm -e SKIP_OPTIMIZE=1 demo:ci php artisan key:generate --show)"
+          docker run -d --name demo -p 8080:8080 \
+            -e APP_KEY="$key" -e APP_ENV=production -e LOG_CHANNEL=stderr \
+            -e SESSION_DRIVER=array -e CACHE_STORE=array -e DB_CONNECTION=sqlite \
+            demo:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/ > /dev/null; then echo "up after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          docker logs demo
+          exit 1

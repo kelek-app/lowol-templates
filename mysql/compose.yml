@@ -1,0 +1,60 @@
+# /srv/__DB__/compose.yml
+#
+# MySQL for __APP__, plus nightly backups:
+#   mysql    the database; apps reach it as host "__DB__"
+#   backup   dumps the database every night into the "backups" volume
+#   upload   copies those dumps to your object storage (if configured)
+#
+# See README.md for restoring a backup.
+
+name: __DB__
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - data:/var/lib/mysql
+    networks:
+      default: {}
+      shared:
+        aliases: [__DB__]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+
+  backup:
+    image: mysql:8.4
+    restart: unless-stopped
+    entrypoint: ["bash", "/scripts/backup.sh"]
+    env_file: [.env, backup.env]
+    environment:
+      MYSQL_HOST: mysql
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups:/backups
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  upload:
+    image: rclone/rclone:1
+    restart: unless-stopped
+    entrypoint: ["sh", "/scripts/upload.sh"]
+    env_file: backup.env
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups:/backups
+
+volumes:
+  data:
+  backups:
+
+networks:
+  # Apps that use this database join this network.
+  shared:
+    name: __DB__

@@ -1,0 +1,11 @@
+# __APP__: send __DOMAIN__ to the app's web container.
+# More than one domain? List them separated by commas: example.com, www.example.com
+__DOMAIN__ {
+	encode zstd gzip
+	reverse_proxy __APP__-web:8080 {
+		# During a deploy the old and new web containers briefly share this name.
+		# Retrying for a few seconds means no request fails while the old one stops.
+		lb_try_duration 5s
+		fail_duration 10s
+	}
+}
