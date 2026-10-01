@@ -43,12 +43,12 @@ leftovers() {  # <container|volume|network>
 }
 
 remove_all() {  # <container|volume|network>
-    local ids
-    ids="$(leftovers "$1")"
-    [[ -z "$ids" ]] && return 0
+    local ids=() id
+    while IFS= read -r id; do [[ -n "$id" ]] && ids+=("$id"); done < <(leftovers "$1")
+    (( ${#ids[@]} )) || return 0
     case "$1" in
-        container) docker rm -f $ids > /dev/null ;;
-        *) docker "$1" rm $ids > /dev/null ;;
+        container) docker rm -f "${ids[@]}" > /dev/null ;;
+        *) docker "$1" rm "${ids[@]}" > /dev/null ;;
     esac
 }
 

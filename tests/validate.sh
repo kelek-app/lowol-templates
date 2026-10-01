@@ -22,7 +22,7 @@ step "Render templates"
 "$RENDER" "$ROOT/laravel/server" "$OUT/shop" APP=shop DOMAIN=shop.example.com
 "$RENDER" "$ROOT/mysql" "$OUT/shop-mysql" APP=shop DB=shop-mysql
 "$RENDER" "$ROOT/redis" "$OUT/shop-redis" APP=shop DB=shop-redis
-[[ -f "$OUT/shop/.env" && -f "$OUT/shop-mysql/backup.env" ]] && ok ".env files named correctly" || bad ".env files"
+if [[ -f "$OUT/shop/.env" && -f "$OUT/shop-mysql/backup.env" ]]; then ok ".env files named correctly"; else bad ".env files"; fi
 if "$RENDER" "$ROOT/laravel/server" "$OUT/missing" APP=shop >/dev/null 2>&1; then
     bad "render should fail when DOMAIN is missing"
 else
@@ -36,7 +36,7 @@ if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then
         if (cd "$OUT/$dir" && docker compose config --quiet); then ok "$dir/compose.yml"; else bad "$dir/compose.yml"; fi
     done
     names="$(cd "$OUT/shop" && docker compose config --format json | grep -o '"container_name"' || true)"
-    [[ -z "$names" ]] && ok "no fixed container names" || bad "container_name should not be set"
+    if [[ -z "$names" ]]; then ok "no fixed container names"; else bad "container_name should not be set"; fi
 else
     echo "skip (docker compose not installed)"
 fi
