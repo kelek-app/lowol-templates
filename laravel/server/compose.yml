@@ -42,15 +42,11 @@ services:
     <<: *app
     command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
     stop_grace_period: 60s
-    healthcheck:
-      disable: true
     networks: [default, __APP__-mysql, __APP__-redis]
 
   scheduler:
     <<: *app
     command: ["php", "artisan", "schedule:work"]
-    healthcheck:
-      disable: true
     networks: [default, __APP__-mysql, __APP__-redis]
 
 networks:
