@@ -26,11 +26,37 @@ set_env() {  # <file> <KEY> <value>: set KEY=value, adding the line if missing
     fi
 }
 
-down() {
-    say "Stopping and removing everything from $TRY"
-    for dir in "$TRY/$APP" "$TRY/$APP-redis" "$TRY/$APP-mysql" "$TRY/proxy"; do
-        [[ -f "$dir/compose.yml" ]] && (cd "$dir" && docker compose down -v --remove-orphans)
+PROJECTS=("$APP" "$APP-redis" "$APP-mysql" proxy)
+
+# Lists Docker objects (container, volume or network) that belong to our
+# Compose projects. Goes by Compose's project label rather than by the files in
+# .try/, so it also finds what an earlier run from another copy of this folder
+# left behind.
+leftovers() {  # <container|volume|network>
+    local p
+    for p in "${PROJECTS[@]}"; do
+        case "$1" in
+            container) docker ps -aq --filter "label=com.docker.compose.project=$p" ;;
+            *) docker "$1" ls -q --filter "label=com.docker.compose.project=$p" ;;
+        esac
     done
+}
+
+remove_all() {  # <container|volume|network>
+    local ids
+    ids="$(leftovers "$1")"
+    [[ -z "$ids" ]] && return 0
+    case "$1" in
+        container) docker rm -f $ids > /dev/null ;;
+        *) docker "$1" rm $ids > /dev/null ;;
+    esac
+}
+
+down() {
+    say "Stopping and removing the containers, data and networks of: ${PROJECTS[*]}"
+    remove_all container
+    remove_all volume
+    remove_all network
     rm -rf "$TRY"
     echo "Done. The image $APP:local is kept; remove it with: docker image rm $APP:local"
 }
@@ -40,6 +66,13 @@ up() {
     app_dir="$(cd "$app_dir" && pwd)"
     [[ -f "$app_dir/artisan" ]] || { echo "No artisan file in $app_dir: is it a Laravel app?" >&2; exit 1; }
     [[ -e "$TRY" ]] && { echo "$TRY exists. Run '$0 down' first." >&2; exit 1; }
+    # MySQL and Redis set their passwords only when their data is first created,
+    # so data left from an earlier run would reject the new passwords.
+    if [[ -n "$(leftovers container)$(leftovers volume)" ]]; then
+        echo "Containers or data from an earlier run still exist (maybe started from another copy of this folder)." >&2
+        echo "Run '$0 down' first." >&2
+        exit 1
+    fi
 
     say "Checking the app has the Dockerfile from this repo"
     for f in Dockerfile .dockerignore docker; do
