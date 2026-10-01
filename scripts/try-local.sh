@@ -46,6 +46,9 @@ up() {
         if [[ ! -e "$app_dir/$f" ]]; then
             cp -R "$ROOT/laravel/$f" "$app_dir/$f"
             echo "copied $f into $app_dir"
+        elif ! diff -rq "$ROOT/laravel/$f" "$app_dir/$f" > /dev/null; then
+            echo "note: $f in your app differs from this repo's version (kept yours)."
+            echo "      To use the latest: cp -R $ROOT/laravel/$f $app_dir/"
         fi
     done
 

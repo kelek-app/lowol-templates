@@ -10,7 +10,14 @@
 ARG PHP_VERSION=8.3
 ARG NODE_VERSION=22
 
-# --- 1. PHP dependencies -----------------------------------------------------
+# --- PHP base: the same PHP and extensions at build time and at run time -----
+FROM dunglas/frankenphp:1-php${PHP_VERSION} AS php-base
+RUN install-php-extensions pdo_mysql redis pcntl bcmath intl zip opcache exif gd \
+ && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+FROM node:${NODE_VERSION}-bookworm-slim AS node
+
+# --- 1. PHP dependencies for production --------------------------------------
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -22,21 +29,29 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize --no-scripts
 
 # --- 2. Front-end assets (Vite) ----------------------------------------------
-FROM node:${NODE_VERSION}-alpine AS assets
+# This stage has PHP as well as Node: Vite plugins such as Laravel Wayfinder run
+# `php artisan` during the build. It installs dev dependencies too; none of
+# them reach the final image.
+FROM php-base AS assets
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
+COPY composer.json composer.lock ./
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    composer install --no-interaction --prefer-dist --no-scripts --no-autoloader
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY . .
-# Some packages (Livewire, Ziggy, Flux) import JS from vendor/.
-COPY --from=vendor /app/vendor ./vendor
-RUN npm run build
+RUN composer dump-autoload --no-scripts \
+ && npm run build
 
 # --- 3. Runtime ---------------------------------------------------------------
-FROM dunglas/frankenphp:1-php${PHP_VERSION} AS app
-
-RUN install-php-extensions pdo_mysql redis pcntl bcmath intl zip opcache exif gd \
- && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+FROM php-base AS app
 
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-app.ini"
 COPY docker/Caddyfile /etc/app/Caddyfile
