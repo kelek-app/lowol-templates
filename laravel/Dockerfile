@@ -7,7 +7,8 @@
 # Copy this file, .dockerignore and the docker/ folder into the root of your
 # Laravel repo, then:  docker build -t myapp:local .
 
-ARG PHP_VERSION=8.3
+# Match the PHP version your composer.lock was created with (php -v locally).
+ARG PHP_VERSION=8.4
 ARG NODE_VERSION=22
 
 # --- PHP base: the same PHP and extensions at build time and at run time -----
