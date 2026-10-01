@@ -73,5 +73,10 @@ USER app
 ENV PORT=8080
 EXPOSE 8080
 
+# The base image checks FrankenPHP's admin endpoint, which is turned off here and
+# does not exist in the worker or scheduler. Health is checked per process in
+# compose.yml instead (the web container checks GET /).
+HEALTHCHECK NONE
+
 ENTRYPOINT ["app-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/app/Caddyfile"]
