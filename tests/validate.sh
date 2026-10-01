@@ -35,8 +35,8 @@ if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then
     for dir in proxy shop shop-mysql shop-redis; do
         if (cd "$OUT/$dir" && docker compose config --quiet); then ok "$dir/compose.yml"; else bad "$dir/compose.yml"; fi
     done
-    names="$(cd "$OUT/shop" && docker compose config --format json | grep -o '"container_name"' || true)"
-    if [[ -z "$names" ]]; then ok "no fixed container names"; else bad "container_name should not be set"; fi
+    config="$(cd "$OUT/shop" && docker compose config --format json)"
+    if grep -q '"container_name"' <<< "$config"; then bad "container_name should not be set"; else ok "no fixed container names"; fi
 else
     echo "skip (docker compose not installed)"
 fi
