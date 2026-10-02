@@ -12,7 +12,7 @@ these files exactly as they are, and you can manage them by hand.
 | `laravel/server/` | `/srv/<app>/` | Compose file for `web`, `worker` and `scheduler`, plus `.env` and a README |
 | `proxy/` | `/srv/proxy/` | Caddy on ports 80/443 with automatic HTTPS, shared by all apps on the server |
 | `proxy-site/` | `/srv/proxy/sites/<app>.caddy` | Points a domain at one app |
-| `mysql/` | `/srv/<app>-mysql/` | MySQL 8.4 with nightly backups to object storage |
+| `mysql/` | `/srv/<app>-mysql/` | MySQL 8.4 (or 8.0, set in `.env`) with nightly backups to object storage |
 | `redis/` | `/srv/<app>-redis/` | Redis 7 for sessions, cache and queues |
 | `scripts/render.sh` | — | Fills in the `__PLACEHOLDERS__` (what Lowol does when it writes these files) |
 | `scripts/try-local.sh` | — | Runs the whole setup on your own machine |

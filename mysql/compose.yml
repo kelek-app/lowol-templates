@@ -11,7 +11,7 @@ name: __DB__
 
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:${MYSQL_VERSION:-8.4}
     restart: unless-stopped
     env_file: .env
     volumes:
@@ -30,7 +30,7 @@ services:
       retries: 10
 
   backup:
-    image: mysql:8.4
+    image: mysql:${MYSQL_VERSION:-8.4}
     restart: unless-stopped
     entrypoint: ["bash", "/scripts/backup.sh"]
     env_file: [.env, backup.env]
