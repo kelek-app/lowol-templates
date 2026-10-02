@@ -21,7 +21,9 @@ services:
       shared:
         aliases: [__DB__]
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      # Log in as the app over TCP, which only works once the first start has
+      # created its user. mysqladmin ping passes even when logins are refused.
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -u\"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" -e 'SELECT 1' \"$$MYSQL_DATABASE\" > /dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       start_period: 60s
