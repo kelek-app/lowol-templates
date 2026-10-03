@@ -5,10 +5,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 /**
- * One page that shows each part of the setup working. It always answers 200,
- * so a broken database shows up here instead of failing the health check.
+ * Check each part of the setup. A failed check is reported, never thrown, so
+ * a broken database shows up on the page instead of failing the health check.
  */
-Route::get('/', function () {
+$statusChecks = function (): array {
     $check = function (Closure $probe): array {
         try {
             return ['ok' => true, 'detail' => $probe()];
@@ -27,13 +27,26 @@ Route::get('/', function () {
         return $result['ok'] ? ['ok' => true, 'detail' => 'last ran '.now()->parse($result['detail'])->diffForHumans()] : $result;
     };
 
-    return view('status', [
-        'version' => config('app.version'),
-        'checks' => [
-            'MySQL' => $check(fn () => 'version '.DB::scalar('select version()').', '.DB::table('migrations')->count().' migrations run'),
-            'Redis' => $check(fn () => 'page viewed '.Cache::increment('views').' times'),
-            'Scheduler' => $heartbeat('scheduler'),
-            'Queue worker' => $heartbeat('worker'),
-        ],
-    ]);
-});
+    return [
+        'MySQL' => $check(fn () => 'version '.DB::scalar('select version()').', '.DB::table('migrations')->count().' migrations run'),
+        'Redis' => $check(fn () => 'page viewed '.Cache::increment('views').' times'),
+        'Scheduler' => $heartbeat('scheduler'),
+        'Queue worker' => $heartbeat('worker'),
+    ];
+};
+
+/**
+ * One page that shows each part of the setup working. It always answers 200.
+ */
+Route::get('/', fn () => view('status', [
+    'version' => config('app.version'),
+    'checks' => $statusChecks(),
+]));
+
+/**
+ * The same checks for scripts, such as Lowol's nightly test.
+ */
+Route::get('/status.json', fn () => [
+    'version' => config('app.version'),
+    'checks' => $statusChecks(),
+]);

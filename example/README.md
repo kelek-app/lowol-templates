@@ -17,6 +17,21 @@ The page at `/` shows each part of the setup working:
 The page always answers 200, so a broken database shows on the page instead of
 failing the deploy's health check.
 
+`/status.json` returns the same checks for scripts.
+
+## Nightly test versions
+
+Lowol's nightly test deploys this app, then two broken versions of it, each
+one commit on top of `dev`:
+
+| Branch | What's wrong | Lowol should |
+| --- | --- | --- |
+| `nightly/broken` | `/` answers 500 | fail the deploy's check and keep the running version |
+| `nightly/crash` | the queue worker exits on its first job, about a minute after going live | notice the crash and go back to the version before |
+
+After changing the app, move both branches onto `dev` again:
+`git rebase dev nightly/broken && git rebase dev nightly/crash`.
+
 ## Deploy it with Lowol
 
 Create an app with:
