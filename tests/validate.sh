@@ -4,6 +4,7 @@
 #   2. docker compose config on each rendered compose.yml
 #   3. shellcheck on all shell scripts (if installed)
 #   4. caddy validate on the proxy config (if caddy is installed)
+#   5. the example app carries the current Laravel template files
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,6 +29,11 @@ if "$RENDER" "$ROOT/laravel/server" "$OUT/missing" APP=shop >/dev/null 2>&1; the
 else
     ok "render refuses unfilled placeholders"
 fi
+
+step "Example app uses the Laravel template unchanged"
+for f in Dockerfile .dockerignore docker/php.ini docker/Caddyfile docker/entrypoint.sh; do
+    if cmp -s "$ROOT/laravel/$f" "$ROOT/example/$f"; then ok "example/$f"; else bad "example/$f differs from laravel/$f; copy it again"; fi
+done
 
 step "docker compose config"
 if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then

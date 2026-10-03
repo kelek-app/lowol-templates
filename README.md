@@ -14,6 +14,7 @@ these files exactly as they are, and you can manage them by hand.
 | `proxy-site/` | `/srv/proxy/sites/<app>.caddy` | Points a domain at one app |
 | `mysql/` | `/srv/<app>-mysql/` | MySQL 8.4 (or 8.0, set in `.env`) with nightly backups to object storage |
 | `redis/` | `/srv/<app>-redis/` | Redis 7 for sessions, cache and queues |
+| `example/` | — | A minimal Laravel app with these files, for trying Lowol or the setup below |
 | `scripts/render.sh` | — | Fills in the `__PLACEHOLDERS__` (what Lowol does when it writes these files) |
 | `scripts/try-local.sh` | — | Runs the whole setup on your own machine |
 
@@ -83,6 +84,8 @@ It builds the image, renders the server files into `.try/` (open them: this
 is exactly what a server gets), starts the proxy, MySQL, Redis and the app,
 and runs migrations. Differences from a real server: plain HTTP on one port,
 and uploads stored locally instead of in object storage.
+
+Or try it with the example app: `scripts/try-local.sh up example`.
 
 ## Render files yourself
 
