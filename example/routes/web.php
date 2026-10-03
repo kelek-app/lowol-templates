@@ -38,7 +38,9 @@ $statusChecks = function (): array {
 /**
  * One page that shows each part of the setup working. It always answers 200.
  */
-Route::get('/', fn () => view('status', [
+Route::get('/', fn () => abort(500, 'Broken on purpose for the nightly test.'));
+
+Route::get('/working', fn () => view('status', [
     'version' => config('app.version'),
     'checks' => $statusChecks(),
 ]));
