@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Queued by the scheduler every minute, so the status page shows that both
@@ -16,6 +15,7 @@ class RecordWorkerHeartbeat implements ShouldQueue
 
     public function handle(): void
     {
-        Cache::forever('heartbeat.worker', now()->toIso8601String());
+        // Crash the worker on purpose, for Lowol's nightly test.
+        exit(1);
     }
 }
