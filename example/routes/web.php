@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Route;
  * so a broken database shows up here instead of failing the health check.
  */
 Route::get('/', function () {
-    throw new RuntimeException('Broken on purpose, to test that Lowol rolls back.');
-
     $check = function (Closure $probe): array {
         try {
             return ['ok' => true, 'detail' => $probe()];
