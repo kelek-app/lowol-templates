@@ -10,7 +10,7 @@ these files exactly as they are, and you can manage them by hand.
 | --- | --- | --- |
 | `laravel/Dockerfile`, `laravel/.dockerignore`, `laravel/docker/` | your repo | Production image for a Laravel app (FrankenPHP, PHP 8.4) |
 | `laravel/server/` | `/srv/<app>/` | Compose file for `web`, `worker` and `scheduler`, plus `.env` and a README |
-| `proxy/` | `/srv/proxy/` | Caddy on ports 80/443 with automatic HTTPS, shared by all apps on the server |
+| `proxy/` | `/srv/proxy/` | Caddy on ports 80/443 with automatic HTTPS, shared by all apps on the server. `trusted-proxies.caddy` lists Cloudflare's addresses, so apps behind Cloudflare's proxy see their visitors' addresses |
 | `proxy-site/` | `/srv/proxy/sites/<app>.caddy` | Points a domain at one app |
 | `mysql/` | `/srv/<app>-mysql/` | MySQL 8.4 (or 8.0, set in `.env`) with nightly backups to object storage |
 | `redis/` | `/srv/<app>-redis/` | Redis 7 for sessions, cache and queues |
@@ -21,7 +21,7 @@ these files exactly as they are, and you can manage them by hand.
 On a server it looks like this:
 
 ```
-/srv/proxy/                  Caddy; sites/<app>.caddy per app
+/srv/proxy/                  Caddy; sites/<app>.caddy per app, trusted-proxies.caddy
 /srv/myapp/                  compose.yml, .env, README.md
 /srv/myapp-mysql/            compose.yml, .env, backup.env, scripts/, README.md
 /srv/myapp-redis/            compose.yml, .env

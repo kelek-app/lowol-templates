@@ -2,6 +2,11 @@
 # Settings shared by every site. Each app's domain lives in sites/<app>.caddy.
 {
 	email __ACME_EMAIL__
+	servers {
+		# Proxies in front of this server, such as Cloudflare's, whose word
+		# Caddy takes for the visitor's address.
+		import trusted-proxies.caddy
+	}
 }
 
 import sites/*.caddy

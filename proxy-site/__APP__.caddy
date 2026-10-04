@@ -7,5 +7,7 @@ __DOMAIN__ {
 		# Retrying for a few seconds means no request fails while the old one stops.
 		lb_try_duration 5s
 		fail_duration 10s
+		# The visitor's address, even behind Cloudflare (see trusted-proxies.caddy).
+		header_up X-Forwarded-For {client_ip}
 	}
 }
