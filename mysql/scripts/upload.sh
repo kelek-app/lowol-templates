@@ -1,12 +1,12 @@
 #!/bin/sh
 # Copies new dumps from /backups to object storage every hour and removes
-# copies older than BACKUP_KEEP_DAYS days.
+# copies older than BACKUP_STORAGE_KEEP_DAYS days.
 #
 # Bring a dump back from object storage before a restore:
 #   docker compose exec upload sh -c 'rclone copy "spaces:$BACKUP_BUCKET/$BACKUP_PREFIX/<file>" /backups/'
 set -eu
 
-KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
+KEEP_DAYS="${BACKUP_STORAGE_KEEP_DAYS:-30}"
 
 log() { echo "[upload $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 

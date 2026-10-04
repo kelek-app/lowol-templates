@@ -17,8 +17,7 @@ Apps reach the database as host `__DB__`, port 3306, on the Docker network `__DB
 - Every night at `BACKUP_HOUR` a compressed dump is written to the `backups`
   volume and kept for `BACKUP_KEEP_DAYS` days.
 - If `BACKUP_BUCKET` is set, dumps are also copied to object storage every
-  hour, under `BACKUP_PREFIX/`, and old copies are removed after the same
-  number of days.
+  hour, under `BACKUP_PREFIX/`, and kept for `BACKUP_STORAGE_KEEP_DAYS` days.
 
 ```sh
 docker compose exec backup bash /scripts/backup.sh now     # back up now
