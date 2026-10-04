@@ -8,8 +8,7 @@
 # web-next only runs during a deploy: the new version starts there first and
 # replaces web once it is healthy. "docker compose up" leaves it alone.
 #
-# Settings and secrets live in .env next to this file. See README.md for how
-# to restart, change settings or deploy a new version by hand.
+# Settings and secrets live in .env next to this file.
 
 name: __APP__
 
@@ -45,7 +44,7 @@ services:
       __APP__-mysql: {}
       __APP__-redis: {}
 
-  # Not on the proxy network, so it gets no requests until Lowol connects it
+  # Not on the proxy network, so it gets no requests until the deploy connects it
   # there for the few seconds web is being replaced.
   web-next:
     <<: *web

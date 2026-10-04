@@ -4,8 +4,6 @@
 #   mysql    the database; apps reach it as host "__DB__"
 #   backup   dumps the database every night into the "backups" volume
 #   upload   copies those dumps to your object storage (if configured)
-#
-# See README.md for restoring a backup.
 
 name: __DB__
 

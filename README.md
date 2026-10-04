@@ -1,6 +1,7 @@
 # lowol-templates
 
-The files Lowol writes to your server, in the open. Everything here is plain
+The files Lowol writes to your server, in the open. Only files the services
+need go on a server; this README is where the how-tos live. Everything here is plain
 Docker and Docker Compose: if you stop using Lowol, your server keeps running
 these files exactly as they are, and you can manage them by hand.
 
@@ -9,7 +10,7 @@ these files exactly as they are, and you can manage them by hand.
 | Folder | Goes to | What it is |
 | --- | --- | --- |
 | `laravel/Dockerfile`, `laravel/.dockerignore`, `laravel/docker/` | your repo | Production image for a Laravel app (FrankenPHP, PHP 8.4) |
-| `laravel/server/` | `/srv/<app>/` | Compose file for `web`, `worker` and `scheduler`, plus `.env` and a README |
+| `laravel/server/` | `/srv/<app>/` | Compose file for `web`, `worker` and `scheduler`, plus `.env` |
 | `proxy/` | `/srv/proxy/` | Caddy on ports 80/443 with automatic HTTPS, shared by all apps on the server. `trusted-proxies.caddy` lists Cloudflare's addresses, so apps behind Cloudflare's proxy see their visitors' addresses |
 | `proxy-site/` | `/srv/proxy/sites/<app>.caddy` | Points a domain at one app |
 | `mysql/` | `/srv/<app>-mysql/` | MySQL 8.4 (or 8.0, set in `.env`) with nightly backups to object storage |
@@ -22,8 +23,8 @@ On a server it looks like this:
 
 ```
 /srv/proxy/                  Caddy; sites/<app>.caddy per app, trusted-proxies.caddy
-/srv/myapp/                  compose.yml, .env, README.md
-/srv/myapp-mysql/            compose.yml, .env, backup.env, scripts/, README.md
+/srv/myapp/                  compose.yml, .env
+/srv/myapp-mysql/            compose.yml, .env, backup.env, scripts/
 /srv/myapp-redis/            compose.yml, .env
 ```
 
@@ -98,7 +99,7 @@ scripts/render.sh laravel/server        /srv/myapp                  APP=myapp DO
 ```
 
 Then fill in the passwords in each `.env`, and start them in order: proxy,
-databases, then the app (see `/srv/myapp/README.md`).
+databases, then the app (see [Deploy a new version by hand](#deploy-a-new-version-by-hand)).
 
 | Placeholder | Meaning |
 | --- | --- |
@@ -106,6 +107,92 @@ databases, then the app (see `/srv/myapp/README.md`).
 | `__DOMAIN__` | Domain(s) for the app, e.g. `shop.example.com, www.shop.example.com` |
 | `__DB__` | Database name, by convention `<app>-mysql` or `<app>-redis` |
 | `__ACME_EMAIL__` | Email for Let's Encrypt expiry notices |
+
+## Manage an app by hand
+
+Nothing on the server needs Lowol. For an app named `myapp`:
+
+| Path | What it is |
+| --- | --- |
+| `/srv/myapp/compose.yml` | The app's containers: `web`, `worker`, `scheduler` |
+| `/srv/myapp/.env` | Settings and secrets for all three |
+| `/srv/myapp-mysql/` | MySQL and its nightly backups |
+| `/srv/myapp-redis/` | Redis for sessions, cache and queues |
+| `/srv/proxy/sites/myapp.caddy` | Which domain points at the app |
+
+Run these from `/srv/myapp`:
+
+```sh
+docker compose ps                    # what is running
+docker compose logs -f web           # follow the web logs (also: worker, scheduler)
+docker compose restart               # restart all three
+docker compose exec web php artisan tinker
+```
+
+To change a setting, edit `.env`, then run `docker compose up -d`.
+
+### Deploy a new version by hand
+
+1. Build the image from your repo, on the server or anywhere with Docker:
+
+   ```sh
+   git clone <your repo> /tmp/myapp && cd /tmp/myapp
+   git checkout <commit>
+   docker build -t myapp:<commit> .
+   ```
+
+   Built elsewhere? Copy it over:
+   `docker save myapp:<commit> | ssh <server> docker load`
+
+2. Run database migrations with the new image:
+
+   ```sh
+   cd /srv/myapp
+   APP_TAG=<commit> docker compose run --rm --no-deps web php artisan migrate --force
+   ```
+
+3. Switch to it: set `APP_TAG=<commit>` in `.env`, then `docker compose up -d`.
+
+4. Roll back: put the previous tag back in `.env` and run `docker compose up -d`.
+   List the tags on the server with `docker image ls myapp`.
+
+Remove old images with `docker image rm myapp:<old tag>`.
+
+## Backups and restores
+
+In `/srv/myapp-mysql`, `compose.yml` runs `mysql`, plus `backup` (nightly
+dump) and `upload` (copy to object storage). `backup.env` holds the backup
+time, how long to keep dumps and the object storage keys; after changing it,
+run `docker compose up -d`.
+
+- Every night at `BACKUP_HOUR` a compressed dump is written to the `backups`
+  volume and kept for `BACKUP_KEEP_DAYS` days.
+- If `BACKUP_BUCKET` is set, dumps are also copied to object storage every
+  hour, under `BACKUP_PREFIX/`, and kept for `BACKUP_STORAGE_KEEP_DAYS` days.
+
+Run these from `/srv/myapp-mysql`:
+
+```sh
+docker compose exec backup bash /scripts/backup.sh now     # back up now
+docker compose exec backup ls -lh /backups                 # list dumps
+docker compose logs backup upload                          # check they ran
+```
+
+Restoring replaces the current data. The script takes a fresh backup first:
+
+```sh
+docker compose exec backup bash /scripts/restore.sh <dump file name>
+```
+
+The dump is only in object storage? Bring it back first:
+
+```sh
+docker compose exec upload sh -c 'rclone copy "spaces:$BACKUP_BUCKET/$BACKUP_PREFIX/<dump file name>" /backups/'
+```
+
+To stop backups, remove the `backup` and `upload` services from
+`compose.yml`, then run `docker compose up -d --remove-orphans`. Delete the
+object storage key from your cloud account if nothing else uses it.
 
 ## Check the templates
 
