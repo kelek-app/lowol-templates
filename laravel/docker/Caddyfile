@@ -13,5 +13,15 @@
 :{$PORT:8080} {
 	root * /app/public
 	encode zstd gzip
-	php_server
+
+	# The proxy says whether the visitor came over HTTPS. Telling PHP lets
+	# Laravel make https:// links even when the app doesn't trust proxies.
+	map {header.X-Forwarded-Proto} {forwarded_https} {
+		https on
+		default off
+	}
+
+	php_server {
+		env HTTPS {forwarded_https}
+	}
 }

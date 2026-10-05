@@ -8,6 +8,7 @@
 # Laravel repo, then:  docker build -t myapp:local .
 
 # Match the PHP version your composer.lock was created with (php -v locally).
+# A build can pick another one with --build-arg PHP_VERSION=8.3.
 ARG PHP_VERSION=8.4
 ARG NODE_VERSION=22
 

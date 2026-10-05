@@ -49,11 +49,16 @@ internet ──443──> proxy (Caddy) ──"myapp-web:8080"──> myapp web
 
 ## Use the Laravel image in your app
 
+A Laravel repo without a Dockerfile needs none of this: Lowol builds it with
+these files as they are at the commit Lowol names. To change them, copy them
+into your repo:
+
 1. Copy `laravel/Dockerfile`, `laravel/.dockerignore` and `laravel/docker/` into
    the root of your Laravel repo.
 2. Make sure your app:
-   - **trusts the proxy**, so it generates `https://` links. Laravel 11+, in
-     `bootstrap/app.php`:
+   - makes `https://` links: the image tells PHP when the proxy received the
+     visit over HTTPS, so this works as is. To also see visitors' addresses
+     (`$request->ip()`), trust the proxy. Laravel 11+, in `bootstrap/app.php`:
      ```php
      ->withMiddleware(function (Middleware $middleware) {
          $middleware->trustProxies(at: '*');
