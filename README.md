@@ -10,6 +10,7 @@ these files exactly as they are, and you can manage them by hand.
 | Folder | Goes to | What it is |
 | --- | --- | --- |
 | `laravel/Dockerfile`, `laravel/.dockerignore`, `laravel/docker/` | your repo | Production image for a Laravel app (FrankenPHP, PHP 8.4) |
+| `laravel/Dockerfile.lambda` | your repo | Image for a Laravel app on AWS Lambda (Bref, arm64); adds Bref's Laravel bridge when the app doesn't require it |
 | `laravel/server/` | `/srv/<app>/` | Compose file for `web`, `worker` and `scheduler`, plus `.env` |
 | `proxy/` | `/srv/proxy/` | Caddy on ports 80/443 with automatic HTTPS, shared by all apps on the server. `trusted-proxies.caddy` lists Cloudflare's addresses, so apps behind Cloudflare's proxy see their visitors' addresses |
 | `proxy-site/` | `/srv/proxy/sites/<app>.caddy` | Points a domain at one app |

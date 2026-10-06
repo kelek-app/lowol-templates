@@ -1,0 +1,86 @@
+# AWS Lambda image for a Laravel app, run by Bref on arm64.
+#
+# One image serves every function; BREF_RUNTIME and the command differ per
+# function:
+#   web      BREF_RUNTIME=fpm       public/index.php
+#   console  BREF_RUNTIME=console   artisan
+#   queue    BREF_RUNTIME=function  Bref\LaravelBridge\Queue\QueueHandler
+#
+# Lowol builds a Laravel repo for Lambda with this file unless the repo has
+# its own Dockerfile.lambda. Copy it into your repo, next to .dockerignore,
+# to change it:
+#   docker buildx build --platform linux/arm64 -f Dockerfile.lambda .
+#
+# The front end is served from an S3 bucket (ASSET_URL); the build takes
+# public/build from the `assets-files` stage.
+
+# Bref names its images without the dot: 8.4 is bref/arm-php-84.
+ARG PHP_VERSION=8.4
+ARG BREF_PHP_VERSION=84
+ARG NODE_VERSION=22
+
+FROM node:${NODE_VERSION}-bookworm-slim AS node
+
+# --- 1. PHP dependencies for production --------------------------------------
+# Bref's Laravel bridge runs the app on Lambda; an app that doesn't require it
+# yet gets it here, and its composer.json in the image says so.
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    export COMPOSER_CACHE_DIR=/tmp/composer-cache \
+ && if ! grep -q '"bref/laravel-bridge"' composer.json; then \
+        composer require --no-interaction --no-update \
+            bref/bref:^3.0 bref/laravel-bridge:^3.1 bref/secrets-loader:^1.2 \
+     && composer update --no-interaction --no-install --no-scripts --ignore-platform-reqs \
+            --with-dependencies bref/bref bref/laravel-bridge bref/secrets-loader; \
+    fi \
+ && composer install --no-dev --no-interaction --prefer-dist \
+        --no-scripts --no-autoloader --ignore-platform-reqs \
+ && cp composer.json composer.lock /tmp/
+COPY . .
+RUN cp /tmp/composer.json /tmp/composer.lock ./ \
+ && composer dump-autoload --no-dev --optimize --no-scripts
+
+# --- 2. Front-end assets (Vite) ----------------------------------------------
+# PHP as well as Node: Vite plugins such as Laravel Wayfinder run
+# `php artisan` during the build. It installs dev dependencies too; none of
+# them reach the final image.
+FROM php:${PHP_VERSION}-cli-bookworm AS assets
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    composer install --no-interaction --prefer-dist --no-scripts --no-autoloader --ignore-platform-reqs
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f package-lock.json ]; then npm ci; else npm install; fi
+COPY . .
+# Vite writes these into the build: where the assets are served from and
+# the app's name.
+ARG ASSET_URL=
+ARG VITE_APP_NAME=Laravel
+RUN composer dump-autoload --no-scripts \
+ && npm run build
+
+# Only the built files, for the bucket.
+FROM scratch AS assets-files
+COPY --from=assets /app/public/build /build
+
+# --- 3. Runtime ---------------------------------------------------------------
+FROM bref/arm-php-${BREF_PHP_VERSION}:3 AS app
+
+COPY --from=vendor /app /var/task
+# The Vite manifest is read at render time; the files themselves are served
+# from S3.
+COPY --from=assets /app/public/build /var/task/public/build
+
+# Lambda's file system is read-only apart from /tmp: Bref moves storage/
+# there. The package manifest is built here so the first request skips it.
+RUN cd /var/task && php artisan package:discover --ansi
