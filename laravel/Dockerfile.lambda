@@ -76,6 +76,10 @@ COPY --from=assets /app/public/build /build
 # --- 3. Runtime ---------------------------------------------------------------
 FROM bref/arm-php-${BREF_PHP_VERSION}:3 AS app
 
+# Laravel keeps its own sessions, so PHP's upload progress tracking is never
+# used; it is the way in for CVE-2026-109618 and CVE-2026-109619.
+RUN echo 'session.upload_progress.enabled = Off' > /opt/bref/etc/php/conf.d/zz-app.ini
+
 COPY --from=vendor /app /var/task
 # The Vite manifest is read at render time; the files themselves are served
 # from S3.
