@@ -55,6 +55,14 @@ RUN composer dump-autoload --no-scripts \
 # --- 3. Runtime ---------------------------------------------------------------
 FROM php-base AS app
 
+# Debian's security updates the base image doesn't have yet. Lowol sets
+# SECURITY_UPDATES to the day's date, so a cached build keeps them at most a
+# day old.
+ARG SECURITY_UPDATES=
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-app.ini"
 COPY docker/Caddyfile /etc/app/Caddyfile
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/app-entrypoint

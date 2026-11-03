@@ -76,6 +76,14 @@ COPY --from=assets /app/public/build /build
 # --- 3. Runtime ---------------------------------------------------------------
 FROM bref/arm-php-${BREF_PHP_VERSION}:3 AS app
 
+# Amazon Linux's security updates the base image doesn't have yet: the image
+# stays on the Amazon Linux release it was built from unless asked for the
+# latest. Lowol sets SECURITY_UPDATES to the day's date, so a cached build
+# keeps them at most a day old.
+ARG SECURITY_UPDATES=
+RUN microdnf upgrade -y --releasever=latest --setopt=install_weak_deps=0 \
+ && microdnf clean all
+
 # Laravel keeps its own sessions, so PHP's upload progress tracking is never
 # used; it is the way in for CVE-2026-109618 and CVE-2026-109619.
 RUN echo 'session.upload_progress.enabled = Off' > /opt/bref/etc/php/conf.d/zz-app.ini
