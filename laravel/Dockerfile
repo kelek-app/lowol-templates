@@ -71,12 +71,13 @@ WORKDIR /app
 COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
 
-# Run as an unprivileged user. Only storage/, bootstrap/cache/ and Caddy's own
-# state folders need to be writable.
+# Run as an unprivileged user. Only storage/, bootstrap/cache/, Caddy's own
+# state folders and PsySH's (php artisan tinker; XDG_CONFIG_HOME and
+# XDG_DATA_HOME are /config and /data in this image) need to be writable.
 RUN useradd --create-home --uid 1000 app \
  && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views \
-             storage/logs bootstrap/cache /data/caddy /config/caddy \
- && chown -R app:app storage bootstrap/cache /data/caddy /config/caddy
+             storage/logs bootstrap/cache /data/caddy /config/caddy /config/psysh /data/psysh \
+ && chown -R app:app storage bootstrap/cache /data/caddy /config/caddy /config/psysh /data/psysh
 USER app
 
 ENV PORT=8080
