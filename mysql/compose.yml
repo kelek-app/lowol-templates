@@ -12,6 +12,12 @@ services:
     image: mysql:${MYSQL_VERSION:-8.4}
     restart: unless-stopped
     env_file: .env
+    # Light enough for several apps on a 1 GB server: the performance schema
+    # (MySQL's own monitoring) and 8.4's 64M log buffer take two thirds of
+    # an idle MySQL's memory, about 430 MB down to 135 MB. The buffer pool
+    # caches up to 64M of tables and indexes, half the default, so the most
+    # an app's MySQL grows to stays small too.
+    command: ["--performance-schema=OFF", "--innodb-log-buffer-size=8M", "--innodb-buffer-pool-size=64M"]
     volumes:
       - data:/var/lib/mysql
     networks:
