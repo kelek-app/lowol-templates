@@ -27,7 +27,17 @@ x-web: &web
   environment:
     PORT: "8080"
   healthcheck:
-    test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/') === false ? 1 : 0);"]
+    # Asks for the home page with whatever the image has, so apps in other
+    # languages pass too: PHP, Bun, Node.js, curl or wget.
+    test:
+      - CMD-SHELL
+      - >-
+        if command -v php > /dev/null; then php -r 'exit(@file_get_contents("http://127.0.0.1:8080/") === false ? 1 : 0);';
+        elif command -v bun > /dev/null; then bun -e 'fetch("http://127.0.0.1:8080/").then(r => process.exit(r.status < 400 ? 0 : 1), () => process.exit(1))';
+        elif command -v node > /dev/null; then node -e 'fetch("http://127.0.0.1:8080/").then(r => process.exit(r.status < 400 ? 0 : 1), () => process.exit(1))';
+        elif command -v curl > /dev/null; then curl -fsS -o /dev/null http://127.0.0.1:8080/;
+        elif command -v wget > /dev/null; then wget -q -O /dev/null http://127.0.0.1:8080/;
+        else echo "The image has no php, bun, node, curl or wget to check the app with." >&2; exit 1; fi
     interval: 30s
     timeout: 5s
     start_period: 60s
